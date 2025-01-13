@@ -1,5 +1,6 @@
 package com.example.emojishow;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -10,6 +11,8 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
 
@@ -51,8 +54,33 @@ public class ImageAdapter extends BaseAdapter {
         }
 
         String filePath = imagePaths.get(position);
-        Bitmap bitmap = BitmapFactory.decodeFile(filePath);
-        imageView.setImageBitmap(bitmap);
+        // 异步加载图片
+        // 设置一个tag来标记当前的position，避免错位问题
+        convertView.setTag(R.id.imageView, position);
+
+        // 使用final修饰convertView，以便在Runnable中安全访问
+        final View finalConvertView = convertView;
+
+        // 异步加载图片
+        // 启动新的线程异步加载图片
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final Bitmap bitmap = BitmapFactory.decodeFile(filePath);
+
+                // 确保UI线程更新，且检查convertView的tag与当前position一致
+                ((Activity) context).runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // 通过convertView的tag来确保只更新对应位置的图片
+                        int currentPosition = (int) finalConvertView.getTag(R.id.imageView);
+                        if (currentPosition == position) {
+                            imageView.setImageBitmap(bitmap);  // 只在当前位置一致时更新图片
+                        }
+                    }
+                });
+            }
+        }).start();
 
         Button btnDelete = convertView.findViewById(R.id.btnDelete);
         Button btnDetail = convertView.findViewById(R.id.btnDetail);
